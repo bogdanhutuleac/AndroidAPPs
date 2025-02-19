@@ -59,7 +59,7 @@ A modern Android application designed to help delivery drivers manage their deli
 1. Clone the repository
 
 ```bash
-git clone [repository-url]
+git clone https://github.com/bogdanhutuleac/AndroidAPPs.git
 ```
 
 2. Open in Android Studio
