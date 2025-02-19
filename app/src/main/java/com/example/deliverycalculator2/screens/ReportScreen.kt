@@ -12,108 +12,72 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.deliverycalculator2.data.AppDatabase
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import com.example.deliverycalculator2.utils.SimpleDate
+import com.example.deliverycalculator2.utils.TimeEntry
+import com.example.deliverycalculator2.viewmodels.ReportViewModel
 import java.text.NumberFormat
-import java.util.Locale
+import java.util.*
 import kotlin.math.ceil
-
-// Time entry data class moved outside the composable
-private data class TimeEntry(val hour: Int, val minute: Int) {
-    override fun toString(): String {
-        // Special case for 24:00/00:00 and 24:30/00:30
-        return when {
-            (hour == 24 || hour == 0) && minute == 0 -> "00:00"
-            (hour == 24 || hour == 0) && minute == 30 -> "00:30"
-            else -> String.format("%02d:%02d", hour, minute)
-        }
-    }
-
-    fun toComparableMinutes(): Int {
-        return when {
-            // Convert 00:00 to represent end of day (24:00)
-            hour == 0 && minute == 0 -> 24 * 60
-            // Convert 00:30 to represent 24:30
-            hour == 0 && minute == 30 -> 24 * 60 + 30
-            else -> hour * 60 + minute
-        }
-    }
-}
 
 private fun calculateWorkingHours(start: TimeEntry, end: TimeEntry): Double {
     val startMinutes = start.toComparableMinutes()
     val endMinutes = end.toComparableMinutes()
-    return (endMinutes - startMinutes) / 60.0
+    
+    // Handle special case when end time is 00:00 (midnight)
+    val adjustedEndMinutes = if (end.hour == 0 && end.minute == 0) {
+        24 * 60  // Convert to minutes (24 hours * 60 minutes)
+    } else {
+        endMinutes
+    }
+    
+    return (adjustedEndMinutes - startMinutes).toDouble() / 60.0
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportScreen() {
-    var startTime by remember { mutableStateOf(TimeEntry(12, 0)) }
-    var endTime by remember { mutableStateOf(TimeEntry(0, 0)) }  // 00:00 represents end of day
+fun ReportScreen(selectedDate: SimpleDate) {
+    val viewModel = remember { ReportViewModel.getInstance() }
+    val state by viewModel.state.collectAsState()
+    
     var showStartTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
-    var extraAmount by remember { mutableStateOf("0.00") }
-    var isEditingExtra by remember { mutableStateOf(true) }
-    var showSavedMessage by remember { mutableStateOf(false) }
-    var unpaidTotal by remember { mutableStateOf(0.0) }
     var showTotalDialog by remember { mutableStateOf(false) }
     
-    val context = LocalContext.current
-    val database = remember { AppDatabase.getDatabase(context) }
-    var paidReceiptsCount by remember { mutableStateOf(0) }
-    var unpaidReceiptsCount by remember { mutableStateOf(0) }
-    val scope = rememberCoroutineScope()
     val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale.GERMANY) }
 
-    // Collect the count of paid receipts and calculate unpaid total
-    LaunchedEffect(Unit) {
-        database.clipboardDao().getAllEntries()
-            .collect { entries ->
-                paidReceiptsCount = entries.count { it.isPaid }
-                unpaidReceiptsCount = entries.count { !it.isPaid }
-                unpaidTotal = entries
-                    .filter { !it.isPaid }
-                    .sumOf { it.subtotal }
-            }
+    LaunchedEffect(selectedDate) {
+        viewModel.updateSelectedDate(selectedDate)
     }
 
     val scrollState = rememberScrollState()
 
-    // Generate all possible time entries
     val allTimeEntries = remember {
         buildList {
             for (hour in 0..23) {
                 add(TimeEntry(hour, 0))
                 add(TimeEntry(hour, 30))
             }
-            add(TimeEntry(0, 0))  // Add 00:00 as the last option
+            add(TimeEntry(0, 0))
         }
     }
 
-    // Calculate working hours and payment
-    val workingHours = calculateWorkingHours(startTime, endTime)
-    val hourlyRate = 5 // 5 euros per hour
-    val hoursPayment = ceil(workingHours * hourlyRate)
-    
-    // Calculate paid receipts deduction
-    val paidReceiptRate = 3 // 3 euros per paid receipt
-    val paidReceiptsDeduction = paidReceiptsCount * paidReceiptRate
-    
-    // Parse extra amount
-    val extraAmountValue = extraAmount.toDoubleOrNull() ?: 0.0
-    
-    // Calculate final total
-    val finalTotal = unpaidTotal - hoursPayment - paidReceiptsDeduction - extraAmountValue
-
-    // Calculate total receipts (paid + unpaid)
-    val totalReceipts = remember(paidReceiptsCount, unpaidReceiptsCount) {
-        paidReceiptsCount + unpaidReceiptsCount
+    // Debug prints to check values
+    LaunchedEffect(state) {
+        println("Start Time: ${state.startTime}")
+        println("End Time: ${state.endTime}")
+        println("Working Hours: ${calculateWorkingHours(state.startTime, state.endTime)}")
+        println("Unpaid Total: ${state.unpaidTotal}")
+        println("Paid Receipts Count: ${state.paidReceiptsCount}")
     }
+
+    val workingHours = calculateWorkingHours(state.startTime, state.endTime)
+    val hourlyRate = 5.0
+    val hoursPayment = ceil(workingHours * hourlyRate)
+    val paidReceiptRate = 3.0
+    val paidReceiptsDeduction = state.paidReceiptsCount * paidReceiptRate
+    val extraAmountValue = state.extraAmount.toDoubleOrNull() ?: 0.0
+    val finalTotal = state.unpaidTotal - hoursPayment - paidReceiptsDeduction - extraAmountValue
 
     Column(
         modifier = Modifier
@@ -156,7 +120,7 @@ fun ReportScreen() {
                             onClick = { showStartTimePicker = true },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(startTime.toString())
+                            Text(state.startTime.toString())
                         }
                     }
 
@@ -175,14 +139,14 @@ fun ReportScreen() {
                             onClick = { showEndTimePicker = true },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(endTime.toString())
+                            Text(state.endTime.toString())
                         }
                     }
                 }
             }
         }
 
-        // Hours Section (New)
+        // Hours Section
         OutlinedCard(
             modifier = Modifier
                 .fillMaxWidth()
@@ -206,7 +170,7 @@ fun ReportScreen() {
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            text = String.format("%.1f", workingHours),
+                            text = String.format(Locale.getDefault(),"%.1f", workingHours),
                             style = MaterialTheme.typography.headlineMedium
                         )
                     }
@@ -224,7 +188,7 @@ fun ReportScreen() {
             }
         }
 
-        // Amount Section (New)
+        // Amount Section
         OutlinedCard(
             modifier = Modifier
                 .fillMaxWidth()
@@ -239,7 +203,7 @@ fun ReportScreen() {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = currencyFormatter.format(unpaidTotal),
+                    text = currencyFormatter.format(state.unpaidTotal),
                     style = MaterialTheme.typography.headlineLarge
                 )
             }
@@ -263,18 +227,15 @@ fun ReportScreen() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (isEditingExtra) {
+                    if (state.isEditingExtra) {
                         OutlinedTextField(
-                            value = extraAmount,
+                            value = state.extraAmount,
                             onValueChange = { newValue ->
-                                // Only allow valid decimal numbers with up to 2 decimal places
                                 if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
-                                    extraAmount = newValue
+                                    viewModel.updateExtraAmount(newValue)
                                 }
                             },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal
-                            ),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             prefix = { Text("€") }
@@ -287,12 +248,10 @@ fun ReportScreen() {
                         )
                     }
                     Button(
-                        onClick = {
-                            isEditingExtra = !isEditingExtra
-                        },
-                        modifier = Modifier.align(if (isEditingExtra) Alignment.Bottom else Alignment.CenterVertically)
+                        onClick = { viewModel.updateIsEditingExtra(!state.isEditingExtra) },
+                        modifier = Modifier.align(if (state.isEditingExtra) Alignment.Bottom else Alignment.CenterVertically)
                     ) {
-                        Text(if (isEditingExtra) "Save" else "Edit")
+                        Text(if (state.isEditingExtra) "Save" else "Edit")
                     }
                 }
             }
@@ -332,7 +291,6 @@ fun ReportScreen() {
                     }
                 },
                 text = {
-                    // Deductions list
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -343,18 +301,18 @@ fun ReportScreen() {
                         ) {
                             Text("Total Receipts:", style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                text = (paidReceiptsCount + unpaidReceiptsCount).toString(),
+                                text = (state.paidReceiptsCount + state.unpaidReceiptsCount).toString(),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
-                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Amount:", style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                text = currencyFormatter.format(unpaidTotal),
+                                text = currencyFormatter.format(state.unpaidTotal),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -373,7 +331,7 @@ fun ReportScreen() {
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                "Paid Receipts (${paidReceiptsCount} × €${paidReceiptRate}):",
+                                "Paid Receipts (${state.paidReceiptsCount} × €${paidReceiptRate.toInt()}):",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
@@ -391,7 +349,7 @@ fun ReportScreen() {
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -422,17 +380,16 @@ fun ReportScreen() {
                     LazyColumn(
                         modifier = Modifier.height(300.dp)
                     ) {
-                        items(allTimeEntries.filter { it.toComparableMinutes() < endTime.toComparableMinutes() }) { time ->
+                        items(allTimeEntries.filter { it.toComparableMinutes() < state.endTime.toComparableMinutes() }) { time ->
                             TextButton(
                                 onClick = {
-                                    startTime = time
-                                    if (time.toComparableMinutes() >= endTime.toComparableMinutes()) {
-                                        // Set end time to next available slot
+                                    viewModel.updateStartTime(time)
+                                    if (time.toComparableMinutes() >= state.endTime.toComparableMinutes()) {
                                         val nextIndex = allTimeEntries.indexOf(time) + 1
-                                        endTime = if (nextIndex < allTimeEntries.size) {
-                                            allTimeEntries[nextIndex]
+                                        if (nextIndex < allTimeEntries.size) {
+                                            viewModel.updateEndTime(allTimeEntries[nextIndex])
                                         } else {
-                                            TimeEntry(0, 0)
+                                            viewModel.updateEndTime(TimeEntry(0, 0))
                                         }
                                     }
                                     showStartTimePicker = false
@@ -465,12 +422,12 @@ fun ReportScreen() {
                     ) {
                         items(
                             allTimeEntries.filter { time ->
-                                time.toComparableMinutes() > startTime.toComparableMinutes()
+                                time.toComparableMinutes() > state.startTime.toComparableMinutes()
                             }
                         ) { time ->
                             TextButton(
                                 onClick = {
-                                    endTime = time
+                                    viewModel.updateEndTime(time)
                                     showEndTimePicker = false
                                 },
                                 modifier = Modifier

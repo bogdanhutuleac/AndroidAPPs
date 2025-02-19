@@ -2,7 +2,8 @@ package com.example.deliverycalculator2.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.time.LocalDateTime
+import androidx.room.ColumnInfo
+import java.util.Date
 
 @Entity(tableName = "clipboard_entries")
 data class ClipboardEntry(
@@ -12,6 +13,7 @@ data class ClipboardEntry(
     val deliveryAddress: String,
     val subtotal: Double,
     val total: Double,
-    val isPaid: Boolean,
-    val timestamp: LocalDateTime = LocalDateTime.now()
+    val isPaid: Boolean = false,
+    @ColumnInfo(name = "timestamp")
+    val timestamp: Date = Date()
 ) 

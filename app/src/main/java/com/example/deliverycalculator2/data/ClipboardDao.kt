@@ -2,21 +2,21 @@ package com.example.deliverycalculator2.data
 
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
-import java.time.LocalDateTime
+import java.util.Date
 
 @Dao
 interface ClipboardDao {
     @Query("SELECT * FROM clipboard_entries ORDER BY timestamp DESC")
     fun getAllEntries(): Flow<List<ClipboardEntry>>
 
-    @Query("SELECT * FROM clipboard_entries WHERE date(timestamp) = date(:date) ORDER BY timestamp DESC")
-    fun getEntriesForDate(date: LocalDateTime): Flow<List<ClipboardEntry>>
+    @Query("SELECT * FROM clipboard_entries WHERE timestamp >= :startOfDay AND timestamp < :endOfDay ORDER BY timestamp DESC")
+    fun getEntriesForDate(startOfDay: Date, endOfDay: Date): Flow<List<ClipboardEntry>>
 
     @Insert
     suspend fun insert(entry: ClipboardEntry)
 
     @Query("DELETE FROM clipboard_entries WHERE timestamp < :cutoffDate")
-    suspend fun deleteOldEntries(cutoffDate: LocalDateTime)
+    suspend fun deleteOldEntries(cutoffDate: Date)
 
     @Query("DELETE FROM clipboard_entries WHERE id = :entryId")
     suspend fun deleteEntry(entryId: Long)

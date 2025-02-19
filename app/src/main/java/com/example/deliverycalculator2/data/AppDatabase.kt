@@ -2,9 +2,9 @@ package com.example.deliverycalculator2.data
 
 import android.content.Context
 import androidx.room.*
-import java.time.LocalDateTime
+import java.util.Date
 
-@Database(entities = [ClipboardEntry::class], version = 1, exportSchema = false)
+@Database(entities = [ClipboardEntry::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun clipboardDao(): ClipboardDao
@@ -13,28 +13,28 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        fun getDatabase(context: Context): AppDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
+        fun getDatabase(context: Context): AppDatabase =
+            INSTANCE ?: synchronized(this) {
+                INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "clipboard_database"
-                ).build()
-                INSTANCE = instance
-                instance
+                )
+                .fallbackToDestructiveMigration()
+                .build()
+                .also { INSTANCE = it }
             }
+
+        fun getInstance(): AppDatabase {
+            return INSTANCE ?: throw IllegalStateException("Database must be initialized first")
         }
     }
 }
 
 class Converters {
     @TypeConverter
-    fun fromTimestamp(value: String?): LocalDateTime? {
-        return value?.let { LocalDateTime.parse(it) }
-    }
+    fun fromTimestamp(value: Long?): Date? = value?.let { Date(it) }
 
     @TypeConverter
-    fun dateToTimestamp(date: LocalDateTime?): String? {
-        return date?.toString()
-    }
+    fun dateToTimestamp(date: Date?): Long? = date?.time
 } 
