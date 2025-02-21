@@ -2,31 +2,89 @@
 
 A modern Android application designed to help delivery drivers manage their deliveries, track earnings, and calculate their daily totals. Built with Jetpack Compose and following Material 3 design principles.
 
-## Features
+## How to Use
 
-### Home Screen
+### Scanning Receipts
 
-- Parse and save delivery receipts from clipboard
-- Display delivery details including:
-  - Delivery addresses (clickable, opens in Google Maps)
-  - Subtotal amounts
-  - Paid/Unpaid status
-- Edit or delete individual entries
-- Automatic cleanup of old entries (7 days)
+1. Take a photo of the receipt using your phone's camera
+2. Open Google Lens (or select the Lens option in your gallery)
+3. Use the Lens option to scan the receipt
+4. Select all the text from the scanned receipt
+5. Copy the selected text to clipboard
+6. Open the Delivery Calculator app
+7. Click "Save Receipt from Clipboard" to import the receipt data
 
-### Report Screen
+The app supports various receipt formats:
 
-- Calculate daily earnings
-- Track working hours:
-  - Configurable start and end times
-  - Automatic calculation of total hours
-  - Payment calculation (€5 per hour, rounded up)
-- Display delivery totals:
-  - Total number of deliveries
-  - Unpaid delivery amounts
-  - Paid delivery deductions (€3 per paid delivery)
-- Extra amount field for additional deductions
-- Final total calculation showing net earnings
+- Just Eat receipts
+- JustEats receipts
+- Shop receipts (San Marino)
+- Deliveroo receipts
+- Online receipts
+
+### Managing Deliveries
+
+1. Home Screen:
+
+   - View all deliveries for the selected date
+   - Each delivery card shows:
+     - Delivery address (tap to open in Google Maps)
+     - Subtotal amount
+     - Payment status (Paid/Not Paid)
+     - Phone number with direct call button (where available)
+   - Edit subtotal by tapping the amount
+   - Toggle payment status using the switch
+   - Delete entries using the red delete button
+
+2. Phone Number Handling:
+
+   - Just Eat/JustEats: Uses "014832993" with masking/verification code
+   - Shop Receipts: Uses actual phone number (adds "01" prefix if starts with "2")
+   - Deliveroo: Uses provided phone number with access code
+   - Online Receipts: Uses actual phone number
+
+3. Address Handling:
+   - All addresses are clickable and open in Google Maps
+   - Different formats are supported for each receipt type
+   - Special characters and formatting are cleaned automatically
+
+### Calculating Earnings
+
+1. Report Screen:
+
+   - Select working hours:
+
+     - Set start time (default 12:00)
+     - Set end time
+     - Hours are calculated automatically
+
+   - Payment Calculations:
+
+     - Hours payment: €5 per hour (rounded up)
+     - Paid delivery deduction: €3 per paid delivery
+     - Extra deductions: Add any additional amounts
+
+   - View Totals:
+     - Total unpaid deliveries amount
+     - Number of paid/unpaid deliveries
+     - Final earnings after all deductions
+
+2. Daily Management:
+   - Switch between dates using the date selector
+   - Each date maintains separate:
+     - Working hours
+     - Delivery counts
+     - Payment calculations
+   - Automatic cleanup of entries older than 7 days
+
+### Additional Features
+
+- One-tap calling: Click phone icon to call customer
+- Automatic formatting of phone numbers and codes
+- Material 3 design with clean, modern interface
+- Persistent storage of all delivery data
+- Error handling for invalid receipt formats
+- Automatic state saving and recovery
 
 ## Technical Details
 

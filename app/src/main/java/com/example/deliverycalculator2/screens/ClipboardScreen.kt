@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -151,36 +152,90 @@ private fun ReceiptCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth()
         ) {
+            // Header with Actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Delivery Address:",
-                        fontWeight = FontWeight.Bold
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable {
+                Text(
+                    text = "Delivery Details",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (entry.phoneNumber.isNotEmpty()) {
+                        FilledTonalIconButton(
+                            onClick = {
+                                val phoneNumber = if (entry.maskingCode.isNotEmpty()) {
+                                    // For JustEats receipts with masking code
+                                    "${entry.phoneNumber},${entry.maskingCode}#"
+                                } else {
+                                    // For online receipts (no masking code)
+                                    entry.phoneNumber
+                                }
+                                val intent = Intent(Intent.ACTION_DIAL).apply {
+                                    data = Uri.parse("tel:${Uri.encode(phoneNumber)}")
+                                }
+                                context.startActivity(intent)
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = "Call customer"
+                            )
+                        }
+                    }
+                    IconButton(onClick = onDeleteClick) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete entry",
+                            tint = Color.Red
+                        )
+                    }
+                }
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+            // Address Section
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Delivery Address",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
                             val uri = Uri.parse("https://maps.google.com/maps?q=${Uri.encode(entry.deliveryAddress)}")
                             val intent = Intent(Intent.ACTION_VIEW, uri)
                             context.startActivity(intent)
-                        }
+                        },
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = entry.deliveryAddress,
-                            color = MaterialTheme.colorScheme.primary,
-                            textDecoration = TextDecoration.Underline,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyMedium
                         )
                         Icon(
                             imageVector = Icons.Default.Map,
@@ -190,86 +245,115 @@ private fun ReceiptCard(
                         )
                     }
                 }
-                IconButton(onClick = onDeleteClick) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete entry",
-                        tint = Color.Red
-                    )
-                }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Payment Details Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
+                // Subtotal Column
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
-                        text = "Subtotal:",
-                        fontWeight = FontWeight.Bold
+                        text = "Subtotal",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (isEditingSubtotal) {
-                        AlertDialog(
-                            onDismissRequest = { isEditingSubtotal = false },
-                            title = { Text("Edit Subtotal") },
-                            text = {
-                                OutlinedTextField(
-                                    value = subtotalText,
-                                    onValueChange = { subtotalText = it },
-                                    singleLine = true,
-                                    label = { Text("Subtotal") }
-                                )
-                            },
-                            confirmButton = {
-                                TextButton(
-                                    onClick = {
-                                        subtotalText.toDoubleOrNull()?.let { newSubtotal ->
-                                            onSubtotalUpdate(newSubtotal)
-                                        }
-                                        isEditingSubtotal = false
-                                    }
-                                ) {
-                                    Text("Save")
-                                }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { isEditingSubtotal = false }) {
-                                    Text("Cancel")
-                                }
-                            }
-                        )
-                    } else {
+                    Surface(
+                        modifier = Modifier.clickable { isEditingSubtotal = true },
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = MaterialTheme.shapes.small
+                    ) {
                         Text(
                             text = String.format(Locale.US, "€%.2f", entry.subtotal),
-                            modifier = Modifier.clickable { isEditingSubtotal = true }
+                            modifier = Modifier.padding(8.dp),
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
-                Column {
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Payment Status Column
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
-                        text = "Paid:",
-                        fontWeight = FontWeight.Bold
+                        text = "Payment Status",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(if (entry.isPaid) "Yes" else "No")
+                        Text(
+                            text = if (entry.isPaid) "Paid" else "Not Paid",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (entry.isPaid) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.error
+                        )
                         Switch(
                             checked = entry.isPaid,
-                            onCheckedChange = onPaidStatusUpdate
+                            onCheckedChange = onPaidStatusUpdate,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
                         )
                     }
                 }
             }
-            
+
+            // Timestamp at the bottom
             Text(
                 text = entry.timestamp.toString(),
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 8.dp)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 16.dp)
             )
         }
+    }
+
+    // Subtotal Edit Dialog
+    if (isEditingSubtotal) {
+        AlertDialog(
+            onDismissRequest = { isEditingSubtotal = false },
+            title = { Text("Edit Subtotal") },
+            text = {
+                OutlinedTextField(
+                    value = subtotalText,
+                    onValueChange = { subtotalText = it },
+                    singleLine = true,
+                    label = { Text("Subtotal") },
+                    prefix = { Text("€") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        subtotalText.toDoubleOrNull()?.let { newSubtotal ->
+                            onSubtotalUpdate(newSubtotal)
+                        }
+                        isEditingSubtotal = false
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { isEditingSubtotal = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 } 

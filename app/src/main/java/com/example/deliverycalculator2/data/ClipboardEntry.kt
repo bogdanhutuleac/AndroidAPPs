@@ -14,6 +14,8 @@ data class ClipboardEntry(
     val subtotal: Double,
     val total: Double,
     val isPaid: Boolean = false,
+    val phoneNumber: String = "",
+    val maskingCode: String = "",
     @ColumnInfo(name = "timestamp")
     val timestamp: Date = Date()
 ) 
