@@ -281,26 +281,33 @@ object ReceiptParser {
         var addressLines = mutableListOf<String>()
         var collectingAddress = false
         var phoneNumber = ""
+        var foundAddressMarker = false
 
         for (i in lines.indices) {
-            val line = lines[i]
+            val line = lines[i].trim()
             when {
-                line.startsWith("Accepted:", ignoreCase = true) -> {
+                // Start collecting address after "Accepted:" or "Placed:" line
+                (line.startsWith("Accepted:", ignoreCase = true) || 
+                (!foundAddressMarker && line.startsWith("Placed:", ignoreCase = true))) -> {
                     collectingAddress = true
+                    foundAddressMarker = true
+                    addressLines.clear() // Clear any previously collected lines
+                    continue
                 }
-                collectingAddress && (line.startsWith("+") || line.matches(Regex("\\d{10,}"))) -> {
+                // Stop collecting address when we find a phone number
+                collectingAddress && line.matches(Regex("\\d{9,}|\\+\\d{9,}")) -> {
                     collectingAddress = false
-                    deliveryAddress = addressLines.joinToString(", ")
-                    // Extract phone number
-                    phoneNumber = line.replace(" ", "")
-                    // Only replace + with 00 if it's an international number
-                    if (phoneNumber.startsWith("+")) {
-                        phoneNumber = phoneNumber.replace("+", "00")
-                    }
+                    phoneNumber = line.replace(" ", "").replace("+", "00")
+                    // Join collected address lines, filtering out empty lines and the restaurant name
+                    deliveryAddress = addressLines
+                        .filter { it.isNotEmpty() && !it.equals("SAN MARINO", ignoreCase = true) }
+                        .joinToString(", ")
                 }
-                collectingAddress -> {
+                // Collect address lines between "Accepted:/Placed:" and phone number
+                collectingAddress && line.isNotEmpty() -> {
                     addressLines.add(line)
                 }
+                // Handle subtotal
                 line.equals("Subtotal:", ignoreCase = true) && i + 1 < lines.size -> {
                     if (!foundSubtotal) {
                         val nextLine = lines[i + 1]
@@ -311,14 +318,30 @@ object ReceiptParser {
                         foundSubtotal = true
                     }
                 }
-                line.contains("payment", ignoreCase = true) && line.contains("paid", ignoreCase = true) -> {
+                // Handle payment status
+                line.contains("Payment:", ignoreCase = true) && line.contains("Paid", ignoreCase = true) -> {
                     isPaid = true
                 }
             }
         }
 
+        // If we didn't find either "Accepted:" or "Placed:" line, try the original method
+        if (!foundAddressMarker) {
+            addressLines.clear()
+            for (i in lines.indices) {
+                val line = lines[i]
+                if (line.startsWith("+") || line.matches(Regex("\\d{10,}"))) {
+                    phoneNumber = line.replace(" ", "").replace("+", "00")
+                    deliveryAddress = addressLines.joinToString(", ")
+                    break
+                }
+                addressLines.add(line)
+            }
+        }
+
         // Debug logging
         println("Debug: Online Receipt Parsing")
+        println("Debug: Found Address Marker: $foundAddressMarker")
         println("Debug: Extracted address: $deliveryAddress")
         println("Debug: Phone Number: $phoneNumber")
         println("Debug: Subtotal: $subtotal")
@@ -341,12 +364,28 @@ object ReceiptParser {
         var isPaid = false
         var phoneNumber = ""
         var accessCode = ""
+        var collectingAddress = false
+        val addressLines = mutableListOf<String>()
 
         for (i in lines.indices) {
             val line = lines[i].trim()
             when {
                 line.startsWith("Address:", ignoreCase = true) -> {
-                    deliveryAddress = line.substringAfter("Address:").trim()
+                    collectingAddress = true
+                    // Get the address from this line if it contains it
+                    val addressPart = line.substringAfter("Address:").trim()
+                    if (addressPart.isNotEmpty()) {
+                        addressLines.add(addressPart)
+                    }
+                }
+                collectingAddress && !line.startsWith("Customer:", ignoreCase = true) && 
+                !line.startsWith("Phone:", ignoreCase = true) && line.isNotEmpty() -> {
+                    addressLines.add(line)
+                }
+                (line.startsWith("Customer:", ignoreCase = true) || 
+                line.startsWith("Phone:", ignoreCase = true)) && collectingAddress -> {
+                    collectingAddress = false
+                    deliveryAddress = addressLines.joinToString(", ").replace(";", ",")
                 }
                 line.startsWith("Subtotal", ignoreCase = true) -> {
                     if (line.contains("€")) {
@@ -380,6 +419,11 @@ object ReceiptParser {
                         .replace(" ", "")
                 }
             }
+        }
+
+        // If we're still collecting address at the end, finalize it
+        if (collectingAddress && addressLines.isNotEmpty()) {
+            deliveryAddress = addressLines.joinToString(", ").replace(";", ",")
         }
 
         // Debug logging
