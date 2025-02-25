@@ -4,14 +4,18 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +40,8 @@ fun ClipboardScreen(database: AppDatabase, selectedDate: SimpleDate) {
     val entries = remember { mutableStateOf<List<ClipboardEntry>>(emptyList()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var entryToDelete by remember { mutableStateOf<ClipboardEntry?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearchExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedDate) {
         database.clipboardDao().getEntriesForDate(
@@ -43,6 +49,17 @@ fun ClipboardScreen(database: AppDatabase, selectedDate: SimpleDate) {
             endOfDay = selectedDate.toEndOfDay()
         ).collectLatest { dateEntries ->
             entries.value = dateEntries
+        }
+    }
+
+    // Filter entries based on search query
+    val filteredEntries = remember(entries.value, searchQuery) {
+        if (searchQuery.isEmpty()) {
+            entries.value
+        } else {
+            entries.value.filter { entry ->
+                entry.deliveryAddress.contains(searchQuery, ignoreCase = true)
+            }
         }
     }
 
@@ -92,30 +109,125 @@ fun ClipboardScreen(database: AppDatabase, selectedDate: SimpleDate) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Button(
-            onClick = {
-                scope.launch {
-                    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clipData = clipboardManager.primaryClip
-                    if (clipData != null && clipData.itemCount > 0) {
-                        val text = clipData.getItemAt(0).text.toString()
-                        ReceiptParser.parseReceipt(text)?.let { entry ->
-                            database.clipboardDao().insert(entry)
-                        }
-                    }
-                }
-            },
+        // Buttons Row
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Save Receipt from Clipboard")
+            Button(
+                onClick = {
+                    scope.launch {
+                        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clipData = clipboardManager.primaryClip
+                        if (clipData != null && clipData.itemCount > 0) {
+                            val text = clipData.getItemAt(0).text.toString()
+                            ReceiptParser.parseReceipt(text)?.let { entry ->
+                                database.clipboardDao().insert(entry)
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Save Receipt from Clipboard")
+            }
+
+            FilledTonalIconButton(
+                onClick = { isSearchExpanded = !isSearchExpanded },
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = if (isSearchExpanded) 
+                        MaterialTheme.colorScheme.primaryContainer 
+                    else 
+                        MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Icon(
+                    imageVector = if (isSearchExpanded) Icons.Default.Close else Icons.Default.Search,
+                    contentDescription = if (isSearchExpanded) "Close search" else "Open search",
+                    tint = if (isSearchExpanded)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Search Field
+        AnimatedVisibility(
+            visible = isSearchExpanded,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = 2.dp
+            ) {
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    placeholder = { 
+                        Text(
+                            "Search addresses...",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingIcon = if (searchQuery.isNotEmpty()) {
+                        {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear search",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else null,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge
+                )
+            }
+        }
+
+        // Show search results count if searching
+        AnimatedVisibility(
+            visible = searchQuery.isNotEmpty(),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Text(
+                text = "${filteredEntries.size} results found",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
         }
 
         LazyColumn(
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(entries.value) { entry ->
+            items(filteredEntries) { entry ->
                 ReceiptCard(
                     entry = entry,
                     onDeleteClick = {

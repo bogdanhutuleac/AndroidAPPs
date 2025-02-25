@@ -299,23 +299,31 @@ fun ReportScreen(selectedDate: SimpleDate) {
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Total Receipts:", style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                text = (state.paidReceiptsCount + state.unpaidReceiptsCount).toString(),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
                             Text("Amount:", style = MaterialTheme.typography.bodyMedium)
                             Text(
                                 text = currencyFormatter.format(state.unpaidTotal),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Total Receipts:", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text = (state.paidReceiptsCount + state.unpaidReceiptsCount).toString(),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        ) {}
+                        Spacer(modifier = Modifier.height(4.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -326,6 +334,14 @@ fun ReportScreen(selectedDate: SimpleDate) {
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        ) {}
+                        Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -339,6 +355,14 @@ fun ReportScreen(selectedDate: SimpleDate) {
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        ) {}
+                        Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -349,7 +373,14 @@ fun ReportScreen(selectedDate: SimpleDate) {
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        ) {}
+                        Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
