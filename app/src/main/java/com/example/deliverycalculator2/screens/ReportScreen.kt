@@ -1,9 +1,11 @@
 package com.example.deliverycalculator2.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -12,8 +14,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.deliverycalculator2.utils.SimpleDate
 import com.example.deliverycalculator2.utils.TimeEntry
 import com.example.deliverycalculator2.viewmodels.ReportViewModel
@@ -269,137 +274,199 @@ fun ReportScreen(selectedDate: SimpleDate) {
 
         // Total Dialog
         if (showTotalDialog) {
-            AlertDialog(
+            Dialog(
                 onDismissRequest = { showTotalDialog = false },
-                modifier = Modifier.padding(16.dp),
-                title = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Total",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        IconButton(onClick = { showTotalDialog = false }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close"
-                            )
-                        }
-                    }
-                },
-                text = {
+                properties = DialogProperties(
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = true
+                )
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.padding(24.dp)
                     ) {
+                        // Header
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Total",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            IconButton(
+                                onClick = { showTotalDialog = false },
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                        shape = CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Amount
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Amount:", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "Amount:",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             Text(
                                 text = currencyFormatter.format(state.unpaidTotal),
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Receipt counts
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            shape = MaterialTheme.shapes.medium
                         ) {
-                            Text("Total Receipts:", style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                text = (state.paidReceiptsCount + state.unpaidReceiptsCount).toString(),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                            Column(
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        "Total Receipts:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = (state.paidReceiptsCount + state.unpaidReceiptsCount).toString(),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    // Update the morning time range to show the user's actual start time
+                                    val startHour = state.startTime.hour
+                                    val morningLabel = if (startHour >= 17) {
+                                        "Morning (N/A):"
+                                    } else {
+                                        "Morning (${startHour}:00-17:00):"
+                                    }
+                                    
+                                    Text(
+                                        morningLabel,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = state.morningReceiptsCount.toString(),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        ) {}
-                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Deductions section
+                        Text(
+                            "Deductions",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        // Hours Payment
+                        DeductionItem(
+                            label = "Hours Payment:",
+                            amount = hoursPayment,
+                            currencyFormatter = currencyFormatter
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Paid Receipts
+                        DeductionItem(
+                            label = "Paid Receipts (${state.paidReceiptsCount} × €${paidReceiptRate.toInt()}):",
+                            amount = paidReceiptsDeduction,
+                            currencyFormatter = currencyFormatter
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Extra
+                        DeductionItem(
+                            label = "Extra:",
+                            amount = extraAmountValue,
+                            currencyFormatter = currencyFormatter
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider(thickness = 2.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Final Total
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("Hours Payment:", style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                text = "- " + currencyFormatter.format(hoursPayment),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        ) {}
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                "Paid Receipts (${state.paidReceiptsCount} × €${paidReceiptRate.toInt()}):",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = "- " + currencyFormatter.format(paidReceiptsDeduction),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        ) {}
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("Extra:", style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                text = "- " + currencyFormatter.format(extraAmountValue),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        ) {}
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 "Final Total:",
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = currencyFormatter.format(finalTotal),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.primary
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = if (finalTotal >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                             )
                         }
                     }
-                },
-                confirmButton = {},
-                dismissButton = {}
-            )
+                }
+            }
         }
 
         // Time Picker Dialogs
@@ -478,5 +545,36 @@ fun ReportScreen(selectedDate: SimpleDate) {
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun DeductionItem(
+    label: String,
+    amount: Double,
+    currencyFormatter: NumberFormat
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = MaterialTheme.shapes.small
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "- " + currencyFormatter.format(amount),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+        )
     }
 } 
